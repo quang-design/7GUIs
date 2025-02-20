@@ -1,38 +1,41 @@
-# sv
+# 7GUIs Implementation
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This project implements the [7GUIs](https://eugenkiss.github.io/7guis/) challenges following the tutorial series by [Quang Design](https://www.youtube.com/watch?v=afLUZz_7ySc&list=PLKfXuh9ewlTGXxEQjtYxbUBjOnrrrGsWz&index=16).
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+Implemented GUI challenges:
 
-```bash
-# create a new project in the current directory
-npx sv create
+1. Counter
+2. Temperature Converter
+3. Flight Booker
 
-# create a new project in my-app
-npx sv create my-app
-```
+## Installation
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+1. Clone the repository
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+git clone https://github.com/quang-design/7GUIs.git
 ```
 
-## Building
-
-To create a production version of your app:
+2. Install dependencies
 
 ```bash
-npm run build
+bun install
 ```
 
-You can preview the production build with `npm run preview`.
+3. Run the development server
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```bash
+bun run dev
+```
+
+## Tutorial Reference
+
+This project follows the tutorial series:
+
+- [YouTube Playlist](https://www.youtube.com/watch?v=afLUZz_7ySc&list=PLKfXuh9ewlTGXxEQjtYxbUBjOnrrrGsWz)
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
