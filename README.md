@@ -1,6 +1,6 @@
 # 7GUIs Implementation
 
-This project implements the [7GUIs](https://eugenkiss.github.io/7guis/) challenges following the tutorial series by [Quang Design](https://www.youtube.com/watch?v=afLUZz_7ySc&list=PLKfXuh9ewlTGXxEQjtYxbUBjOnrrrGsWz&index=16).
+This project implements the [7GUIs](https://eugenkiss.github.io/7guis/) challenges following the tutorial series by [Joy of Code](https://www.youtube.com/watch?v=afLUZz_7ySc&list=PLKfXuh9ewlTGXxEQjtYxbUBjOnrrrGsWz&index=16).
 
 ## Features
 
