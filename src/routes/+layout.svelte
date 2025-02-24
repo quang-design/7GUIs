@@ -1,17 +1,48 @@
 <script lang="ts">
 	import '../app.css';
-	let { children } = $props();
+	import { browser } from '$app/environment';
+	let { data, children } = $props();
+	let { navItems } = data;
 </script>
 
-<nav class="absolute top-4 left-4">
-	<ul class="flex flex-col gap-1 sm:flex-row">
-		<li><a href="/">Home</a></li>
-		<li><a href="/01-counter">01-Counter</a></li>
-		<li><a href="/02-converter">02-Converter</a></li>
-		<li><a href="/03-flight">03-Flight Booker</a></li>
-		<li><a href="/04-timer">04-Timer</a></li>
-		<li><a href="/05-CRUD">05-CRUD</a></li>
-	</ul>
+{#snippet anchor(link: string, title: string | undefined)}
+	<a href={link}>{title}</a>
+{/snippet}
+
+<nav
+	class="fixed top-0 right-0 left-0 z-50 h-16 items-center justify-center bg-white p-2 shadow-sm"
+>
+	<div class="hidden h-full items-center justify-center gap-4 md:flex">
+		<ul class="flex h-full items-center justify-center gap-4">
+			{#each navItems as item}
+				<li>
+					<a href={item.link} class="text-gray-600 hover:text-blue-600">{item.title}</a>
+				</li>
+			{/each}
+		</ul>
+	</div>
+	{#if browser}
+		<div class="md:hidden">
+			<select
+				onchange={(e) => {
+					const target = e.target as HTMLSelectElement;
+					if (target) {
+						window.location.href = target.value;
+					}
+				}}
+				class="h-full bg-white p-2"
+			>
+				<option value="" disabled>Select a page</option>
+				{#each navItems as item}
+					<option value={item.link} selected={item.link === window.location.pathname}
+						>{item.title}</option
+					>
+				{/each}
+			</select>
+		</div>
+	{/if}
 </nav>
 
-{@render children()}
+<main class="container mx-auto px-4 py-8 pt-20">
+	{@render children()}
+</main>
