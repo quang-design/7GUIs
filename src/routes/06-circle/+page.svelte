@@ -9,19 +9,21 @@
 
 	// --- Context Menu & Dialog ---
 	// [x] Context menu includes an "Adjust diameter..." option.
-	// [ ] Selecting this option opens a slider dialog.
-	// [ ] Changes are applied in real-time as the slider moves.
-	// [ ] Closing the dialog marks the last diameter change as significant for undo/redo.
+	// [x] Selecting this option opens a slider dialog.
+	// [x] Changes are applied in real-time as the slider moves.
+	// [x] Closing the dialog marks the last diameter change as significant for undo/redo.
 
 	// --- Undo/Redo System ---
-	// [ ] Implement undo to reverse the last significant action (circle creation or diameter change).
-	// [ ] Implement redo to reapply the last undone action unless new changes were made.
+	// [x] Implement undo to reverse the last significant action (circle creation or diameter change).
+	// [x] Implement redo to reapply the last undone action unless new changes were made.
 
 	// --- Development Considerations ---
-	// [ ] Ensure efficient state tracking for undo/redo management.
-	// [ ] Optimize custom drawing for smooth rendering and re-rendering.
-	// [ ] Maintain dialog control across multiple UI interactions.
-	// [ ] Ensure intuitive mouse event handling for a seamless user experience.
+	// [x] Ensure efficient state tracking for undo/redo management.
+	// [x] Optimize custom drawing for smooth rendering and re-rendering.
+	// [x] Maintain dialog control across multiple UI interactions.
+	// [x] Ensure intuitive mouse event handling for a seamless user experience.
+
+	import SliderDialog from './SliderDialog.svelte';
 
 	let canvas: HTMLCanvasElement;
 	let canvasWidth = $state(0);
@@ -30,13 +32,42 @@
 	let mouseX = $state(0);
 	let mouseY = $state(0);
 
-	const circles = $state<{ x: number; y: number }[]>([]);
-	$inspect(circles);
+	interface Circle {
+		x: number;
+		y: number;
+		diameter: number;
+	}
+
+	const circles = $state<Circle[]>([]);
+	const undoStack = $state<Circle[][]>([]);
+	const redoStack = $state<Circle[][]>([]);
+
+	// Track if we're in the middle of a diameter adjustment
+	let isAdjustingDiameter = $state(false);
+	let originalDiameter = $state<number | null>(null);
+
+	// Reactive effect to ensure canvas redraws when circles change
+	$effect(() => {
+		// Trigger redraw whenever circles array changes
+		if (circles.length >= 0) {
+			redrawCanvas();
+		}
+	});
+
+	// Helper function to save state
+	function saveState() {
+		undoStack.push(JSON.parse(JSON.stringify(circles)));
+		redoStack.length = 0; // Clear redo stack when new action is performed
+	}
 
 	let showContextMenu = $state(false);
 	let contextMenuX = $state(0);
 	let contextMenuY = $state(0);
 	let selectedCircleIndex = $state<number | null>(null);
+	let hoveredCircleIndex = $state<number | null>(null);
+
+	let showSliderDialog = $state(false);
+	let selectedCircleDiameter = $state(100);
 
 	function getCanvasSize() {
 		if (canvas) {
@@ -56,20 +87,30 @@
 		mouseX = event.clientX - rect.left;
 		mouseY = event.clientY - rect.top;
 
-		selectedCircleIndex = null;
+		hoveredCircleIndex = null;
 		circles.forEach((circle, index) => {
 			const dx = circle.x - mouseX;
 			const dy = circle.y - mouseY;
-			if (Math.sqrt(dx * dx + dy * dy) <= 50) {
-				selectedCircleIndex = index;
+			if (Math.sqrt(dx * dx + dy * dy) <= circle.diameter / 2) {
+				hoveredCircleIndex = index;
 			}
 		});
 		redrawCanvas();
 	}
 
-	function drawCircle() {
-		circles.push({ x: mouseX, y: mouseY });
-		redrawCanvas();
+	function handleCanvasClick(event: MouseEvent) {
+		if (event.button === 0) {
+			// Left click
+			if (hoveredCircleIndex !== null) {
+				// Select the circle if hovering over one
+				selectedCircleIndex = hoveredCircleIndex;
+			} else {
+				// Create a new circle if not hovering over any
+				saveState(); // Save state before adding new circle
+				circles.push({ x: mouseX, y: mouseY, diameter: 100 });
+				selectedCircleIndex = null;
+			}
+		}
 	}
 
 	function redrawCanvas() {
@@ -78,14 +119,21 @@
 
 		ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 		circles.forEach((circle, index) => {
-			const dx = circle.x - mouseX;
-			const dy = circle.y - mouseY;
-			const isCircleHovered = Math.sqrt(dx * dx + dy * dy) <= 50;
+			const isCircleHovered = index === hoveredCircleIndex;
+			const isCircleSelected = index === selectedCircleIndex;
 
 			ctx.beginPath();
-			ctx.arc(circle.x, circle.y, 50, 0, 2 * Math.PI);
-			ctx.strokeStyle = isCircleHovered ? 'oklch(0.546 0.245 262.881)' : 'oklch(0.145 0 0)';
-			ctx.fillStyle = isCircleHovered ? 'rgba(0, 0, 0, 0.05)' : 'transparent';
+			ctx.arc(circle.x, circle.y, circle.diameter / 2, 0, 2 * Math.PI);
+			ctx.strokeStyle = isCircleSelected
+				? 'oklch(0.546 0.245 262.881)'
+				: isCircleHovered
+					? 'oklch(0.346 0.145 262.881)'
+					: 'oklch(0.145 0 0)';
+			ctx.fillStyle = isCircleSelected
+				? 'rgba(0, 0, 0, 0.1)'
+				: isCircleHovered
+					? 'rgba(0, 0, 0, 0.05)'
+					: 'transparent';
 			ctx.fill();
 			ctx.stroke();
 		});
@@ -93,15 +141,48 @@
 
 	function handleContextMenu(event: MouseEvent) {
 		event.preventDefault();
-		if (selectedCircleIndex !== null) {
+		if (hoveredCircleIndex !== null) {
+			selectedCircleIndex = hoveredCircleIndex;
 			showContextMenu = true;
 			contextMenuX = event.clientX;
 			contextMenuY = event.clientY;
+			selectedCircleDiameter = circles[selectedCircleIndex].diameter;
+			originalDiameter = selectedCircleDiameter; // Store original diameter
 		}
 	}
 
 	function closeContextMenu() {
 		showContextMenu = false;
+	}
+
+	function handleUndo() {
+		if (undoStack.length > 0) {
+			// Save current state to redo stack
+			redoStack.push(JSON.parse(JSON.stringify(circles)));
+			// Pop and apply last state from undo stack
+			const lastState = undoStack.pop()!;
+			circles.length = 0;
+			circles.push(...lastState);
+			// Reset selection and dialog states
+			selectedCircleIndex = null;
+			showSliderDialog = false;
+			showContextMenu = false;
+		}
+	}
+
+	function handleRedo() {
+		if (redoStack.length > 0) {
+			// Save current state to undo stack
+			undoStack.push(JSON.parse(JSON.stringify(circles)));
+			// Pop and apply last state from redo stack
+			const nextState = redoStack.pop()!;
+			circles.length = 0;
+			circles.push(...nextState);
+			// Reset selection and dialog states
+			selectedCircleIndex = null;
+			showSliderDialog = false;
+			showContextMenu = false;
+		}
 	}
 
 	$effect(() => {
@@ -136,9 +217,13 @@
 <section class="mx-auto flex max-w-xl flex-col items-center justify-center gap-4 text-center">
 	<h1 class="text-center text-4xl font-extrabold lg:text-5xl">Circle Drawer</h1>
 
-	<div>
-		<button>Undo</button>
-		<button>Redo</button>
+	<div class="flex gap-2">
+		<button onclick={handleUndo} class="rounded bg-gray-200 px-4 py-2 hover:bg-gray-300"
+			>Undo</button
+		>
+		<button onclick={handleRedo} class="rounded bg-gray-200 px-4 py-2 hover:bg-gray-300"
+			>Redo</button
+		>
 	</div>
 
 	<div class="relative h-full min-h-96 w-full">
@@ -147,7 +232,7 @@
 			width={canvasWidth}
 			height={canvasHeight}
 			class="absolute inset-0 h-full w-full border border-gray-300"
-			onclick={drawCircle}
+			onclick={handleCanvasClick}
 			onresize={getCanvasSize}
 		></canvas>
 
@@ -159,7 +244,7 @@
 				<button
 					class="w-full px-4 py-2 text-left hover:bg-gray-100"
 					onclick={() => {
-						// TODO: Implement adjust diameter
+						showSliderDialog = true;
 						closeContextMenu();
 					}}
 				>
@@ -171,6 +256,36 @@
 			<div class="fixed inset-0 z-40"></div>
 		{/if}
 	</div>
+
+	<SliderDialog
+		isOpen={showSliderDialog}
+		diameter={selectedCircleDiameter}
+		onDiameterChange={(value) => {
+			if (selectedCircleIndex !== null) {
+				if (!isAdjustingDiameter) {
+					// First diameter change
+					isAdjustingDiameter = true;
+					saveState(); // Save state before first change
+				}
+				selectedCircleDiameter = value;
+				circles[selectedCircleIndex].diameter = value;
+			}
+		}}
+		onClose={() => {
+			// Only save state if there was an actual change
+			if (
+				isAdjustingDiameter &&
+				selectedCircleIndex !== null &&
+				originalDiameter !== circles[selectedCircleIndex].diameter
+			) {
+				saveState();
+			}
+			// Reset adjustment tracking
+			isAdjustingDiameter = false;
+			originalDiameter = null;
+			showSliderDialog = false;
+		}}
+	/>
 
 	<p>Mouse Position: <br />({mouseX}, {mouseY})</p>
 	<p>Canvas Size: <br />({canvasWidth / 2}, {canvasHeight / 2})</p>
