@@ -1,4 +1,4 @@
-# 7GUIs Implementation
+# 7GUIs Implementation in Svelte 5, TypeScript, Tailwind CSS
 
 This project implements the [7GUIs](https://eugenkiss.github.io/7guis/) challenges following the tutorial series by [Joy of Code](https://www.youtube.com/watch?v=afLUZz_7ySc&list=PLKfXuh9ewlTGXxEQjtYxbUBjOnrrrGsWz&index=16).
 
